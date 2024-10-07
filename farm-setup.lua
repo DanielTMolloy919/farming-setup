@@ -5,6 +5,7 @@
 -- Constants
 local AREA_SIZE = 10
 local ITEMS_NEEDED = AREA_SIZE * AREA_SIZE
+local FUEL_SLOT = 16  -- Designate the last slot for fuel
 
 -- Get coordinates from user
 local function getCoordinates()
@@ -103,9 +104,25 @@ local function checkFuel()
     return true
 end
 
--- Collect items from chest
+-- Collect items from chest and fuel up
 local function collectFromChest()
-    local success = turtle.suck(ITEMS_NEEDED)
+    -- Collect blaze rods for fuel
+    turtle.select(FUEL_SLOT)
+    turtle.suck(64)  -- Try to get a full stack of blaze rods
+    
+    -- Refuel with blaze rods
+    while turtle.getFuelLevel() < 20000 and turtle.getItemCount(FUEL_SLOT) > 0 do
+        turtle.refuel(1)
+    end
+    
+    -- Collect farming items
+    local success = false
+    for i = 1, 15 do  -- Use slots 1-15 for farming items
+        turtle.select(i)
+        success = turtle.suck(ITEMS_NEEDED - turtle.getItemCount())
+        if success then break end
+    end
+    
     if not success then
         print("Failed to get items from chest. Make sure chest contains at least " .. ITEMS_NEEDED .. " items.")
         return false
@@ -113,15 +130,14 @@ local function collectFromChest()
     
     -- Verify item count
     local itemCount = 0
-    for i = 1, 16 do
-        turtle.select(i)
-        itemCount = itemCount + turtle.getItemCount()
+    for i = 1, 15 do
+        itemCount = itemCount + turtle.getItemCount(i)
     end
     
     if itemCount < ITEMS_NEEDED then
         print(string.format("Not enough items. Need %d, only got %d.", ITEMS_NEEDED, itemCount))
         -- Return items to chest
-        for i = 1, 16 do
+        for i = 1, 15 do
             turtle.select(i)
             turtle.drop()
         end
@@ -135,7 +151,7 @@ end
 -- Right click on the block below
 local function rightClickBlock()
     if turtle.getItemCount() == 0 then
-        for i = 1, 16 do
+        for i = 1, 15 do
             if turtle.getItemCount(i) > 0 then
                 turtle.select(i)
                 break
@@ -210,11 +226,11 @@ local function main()
         return
     end
     
-    if not checkFuel() then
+    if not collectFromChest() then
         return
     end
     
-    if not collectFromChest() then
+    if not checkFuel() then
         return
     end
     
